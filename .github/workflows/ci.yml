@@ -7,25 +7,29 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Build Docker image
         run: docker build -t infraforge-web:ci -f docker/Dockerfile .
 
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: infraforge-web:ci
           format: table
           scanners: vuln
           severity: HIGH,CRITICAL
-          exit-code: '1'  
+          exit-code: '1'
 
       - name: Start Nginx container
         run: |
@@ -47,3 +51,19 @@ jobs:
       - name: Stop container
         if: always()
         run: docker rm -f infraforge-ci || true
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push Docker image
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          docker tag infraforge-web:ci ghcr.io/dp0912/infraforge-web:latest
+          docker tag infraforge-web:ci ghcr.io/dp0912/infraforge-web:sha-${GITHUB_SHA::7}
+          docker push ghcr.io/dp0912/infraforge-web:latest
+          docker push ghcr.io/dp0912/infraforge-web:sha-${GITHUB_SHA::7}
