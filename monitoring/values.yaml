@@ -1,0 +1,28 @@
+grafana:
+  enabled: true
+  persistence:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 768Mi
+    storageSpec:
+      emptyDir: {}
+
+alertmanager:
+  enabled: false
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 100Mi
+
+kubeStateMetrics:
+  enabled: true
