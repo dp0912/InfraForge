@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: infraforge-web:k8s-arm64
+          image: infraforge-web:v1.1.0-arm64
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
