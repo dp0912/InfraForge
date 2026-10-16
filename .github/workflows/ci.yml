@@ -1,3 +1,4 @@
+
 name: InfraForge CI
 
 on:
@@ -19,9 +20,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # Build locally for testing on the GitHub runner (AMD64)
       - name: Build Docker image
         run: docker build -t infraforge-web:ci -f docker/Dockerfile .
 
+      # Block publishing if HIGH or CRITICAL vulnerabilities are detected
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -52,6 +55,16 @@ jobs:
         if: always()
         run: docker rm -f infraforge-ci || true
 
+      # Allow Docker to build images for ARM64 as well as AMD64
+      - name: Set up QEMU
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/setup-qemu-action@v3
+
+      # Set up Docker's multi-platform image builder
+      - name: Set up Docker Buildx
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: docker/login-action@v3
@@ -60,10 +73,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Tag and push Docker image
+      # Publish one image tag supporting both architectures
+      - name: Build and push multi-platform Docker image
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        run: |
-          docker tag infraforge-web:ci ghcr.io/dp0912/infraforge-web:latest
-          docker tag infraforge-web:ci ghcr.io/dp0912/infraforge-web:sha-${GITHUB_SHA::7}
-          docker push ghcr.io/dp0912/infraforge-web:latest
-          docker push ghcr.io/dp0912/infraforge-web:sha-${GITHUB_SHA::7}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/dp0912/infraforge-web:latest
+            ghcr.io/dp0912/infraforge-web:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/dp0912/InfraForge
