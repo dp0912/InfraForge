@@ -18,6 +18,15 @@ jobs:
       - name: Build Docker image
         run: docker build -t infraforge-web:ci -f docker/Dockerfile .
 
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: infraforge-web:ci
+          format: table
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          exit-code: '1'  
+
       - name: Start Nginx container
         run: |
           docker run -d --name infraforge-ci -p 127.0.0.1:8080:80 infraforge-web:ci
