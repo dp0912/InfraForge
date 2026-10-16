@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: infraforge-web:v1.1.0-arm64
-          imagePullPolicy: IfNotPresent
+          image: ghcr.io/dp0912/infraforge-web:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 80
           readinessProbe:
