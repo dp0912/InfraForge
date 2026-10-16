@@ -1,0 +1,40 @@
+name: InfraForge CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t infraforge-web:ci -f docker/Dockerfile .
+
+      - name: Start Nginx container
+        run: |
+          docker run -d --name infraforge-ci -p 127.0.0.1:8080:80 infraforge-web:ci
+
+      - name: Test HTTP response
+        run: |
+          for i in 1 2 3 4 5; do
+            if curl --fail --silent http://127.0.0.1:8080/ -o /dev/null; then
+              echo "InfraForge HTTP test passed"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "InfraForge HTTP test failed"
+          docker logs infraforge-ci
+          exit 1
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f infraforge-ci || true
